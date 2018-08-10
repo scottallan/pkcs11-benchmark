@@ -1,0 +1,32 @@
+--- module.go	2018-07-13 00:28:00.619623783 -0400
++++ module.new	2018-07-13 00:28:23.147010244 -0400
+@@ -103,6 +103,29 @@
+ 	ctx *pkcs11.Ctx
+ }
+ 
++func (m Module) ReloadModule(path string) (Module, error) {
++	modulesMu.Lock()
++        defer modulesMu.Unlock()
++        _, ok := modules[path]
++        if ok {
++	       m.ctx.Destroy()
++               delete(modules, path)
++        }
++
++        newCtx := pkcs11.New(path)
++        if newCtx == nil {
++                return Module{}, fmt.Errorf("failed to load module %q", path)
++        }
++
++        err := newCtx.Initialize()
++        if err != nil {
++                return Module{}, fmt.Errorf("failed to initialize module: %s", err)
++        }
++
++        modules[path] = Module{newCtx}
++        return modules[path], nil
++}
++
+ // Info returns general information about the module.
+ func (m Module) Info() (pkcs11.Info, error) {
+ 	return m.ctx.GetInfo()
